@@ -1,0 +1,70 @@
+#!/usr/bin/env ruby
+
+require 'rubygems'
+require 'json'
+require 'open3'
+require 'sensu/cli'
+require 'sensu/client'
+require 'sensu/logger'
+require 'sensu/settings'
+
+module Sensu
+  class MockClient < Client
+    def execute_check_command(check)
+      command, unmatched_tokens = substitute_command_tokens(check)
+      if unmatched_tokens.empty?
+        start = Time.now.to_f
+        stdout, stderr, status = Open3.capture3(command)
+        finish = Time.now.to_f
+
+        check[:executed] = start
+        check[:duration] = finish - start
+        check[:status] = status.exitstatus
+      else
+        check[:output] = 'Unmatched command tokens: ' + unmatched_tokens.join(',')
+        check[:status] = 3
+        check[:handle] = false
+      end
+      publish_result(check)
+    end
+
+    def publish_result(check)
+      puts check.to_json
+    end
+  end
+
+  class Runner
+    def initialize(options={})
+      setup_logger(options)
+      @settings = Settings.get(options)
+    end
+
+    def run(client, command)
+      if @settings[:checks] && @settings[:checks][command]
+        @logger.info "Executing check: '#{command}'"
+        check = @settings[:checks][command]
+        client.execute_check_command(check)
+      else
+        @logger.warn "No such check: '#{command}'; interpreting as arbitrary command"
+        client.execute_check_command(:command => command, :name => command)
+      end
+    end
+
+    def setup_logger(options)
+      @logger = Logger.get(options)
+    end
+  end
+end
+
+options = Sensu::CLI.read
+runner = Sensu::Runner.new(options)
+client = Sensu::MockClient.new(options)
+
+if ARGV.length == 0
+  puts 'No check command specified! Aborting.'
+  exit 1
+end
+
+ARGV.each do |check_name|
+  runner.run client, check_name
+end
