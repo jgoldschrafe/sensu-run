@@ -1,4 +1,0 @@
-Usage
-=====
-
-    ./sensu-run -d /etc/sensu/conf.d '/etc/sensu/checks/check_disk.rb -w :::check_disk.warn::: -c :::check_disk.crit:::'
