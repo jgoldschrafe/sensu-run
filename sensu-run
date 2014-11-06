@@ -13,6 +13,7 @@ module Sensu
     def execute_check_command(check)
       command, unmatched_tokens = substitute_command_tokens(check)
       if unmatched_tokens.empty?
+        @logger.info "Interpolated command as: #{command}"
         start = Time.now.to_f
         stdout, stderr, status = Open3.capture3(command)
         finish = Time.now.to_f
