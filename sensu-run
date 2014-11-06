@@ -20,6 +20,7 @@ module Sensu
 
         check[:executed] = start
         check[:duration] = finish - start
+        check[:output] = stdout
         check[:status] = status.exitstatus
       else
         check[:output] = 'Unmatched command tokens: ' + unmatched_tokens.join(',')
